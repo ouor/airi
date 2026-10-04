@@ -160,7 +160,7 @@ class SherpaAsrPlugin : Plugin() {
     }
 
     private fun resolveModel(call: PluginCall): SherpaAsrModel? {
-        val id = call.getString("model") ?: SherpaAsrModel.KoreanZipformer.id
+        val id = call.getString("model") ?: SherpaAsrModel.SenseVoice.id
         val model = SherpaAsrModel.fromId(id)
         if (model == null) call.reject("Unknown model: $id")
         return model

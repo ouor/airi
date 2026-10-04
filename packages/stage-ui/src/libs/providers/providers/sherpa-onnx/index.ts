@@ -33,9 +33,16 @@ export const SHERPA_ONNX_MODELS: SherpaAsrModelInfo[] = [
     description: 'Korean, English, Japanese, Chinese, and Cantonese. Adds punctuation.',
     sizeMegabytes: 228,
   },
+  {
+    id: 'qwen3-asr',
+    name: 'Qwen3-ASR 0.6B',
+    description: 'Korean and many other languages. Natural spacing, but takes several seconds per sentence.',
+    sizeMegabytes: 941,
+  },
 ]
 
-export const SHERPA_ONNX_DEFAULT_MODEL = SHERPA_ONNX_MODELS[0].id
+/** SenseVoice gave the best accuracy for its speed in on-device tests with Korean speech. */
+export const SHERPA_ONNX_DEFAULT_MODEL = 'sense-voice'
 
 /** SenseVoice language hints. `auto` lets the model detect the language. */
 export const SHERPA_ONNX_LANGUAGES = [
