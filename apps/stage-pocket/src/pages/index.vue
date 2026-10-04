@@ -6,12 +6,12 @@ import InteractiveArea from '@proj-airi/stage-layouts/components/Layouts/Interac
 import MobileInteractiveArea from '@proj-airi/stage-layouts/components/Layouts/MobileInteractiveArea.vue'
 import workletUrl from '@proj-airi/stage-ui/workers/vad/process.worklet?worker&url'
 
+import { toWav } from '@proj-airi/audio/encoding'
 import { BackgroundProvider } from '@proj-airi/stage-layouts/components/Backgrounds'
 import { useBackgroundThemeColor } from '@proj-airi/stage-layouts/composables/theme-color'
 import { useBackgroundStore } from '@proj-airi/stage-layouts/stores/background'
 import { IS_DEV } from '@proj-airi/stage-shared'
 import { ViewControlSlider, WidgetStage } from '@proj-airi/stage-ui/components/scenes'
-import { useAudioRecorder } from '@proj-airi/stage-ui/composables/audio/audio-recorder'
 import { createVoiceInputBinding } from '@proj-airi/stage-ui/libs/audio/voice-input-binding'
 import { useVAD } from '@proj-airi/stage-ui/stores/ai/models/vad'
 import { useChatStore } from '@proj-airi/stage-ui/stores/chat'
@@ -73,7 +73,6 @@ onMounted(() => syncBackgroundTheme())
 // Audio + transcription pipeline (mirrors stage-tamagotchi)
 const settingsAudioDeviceStore = useSettingsAudioDevice()
 const { stream, enabled } = storeToRefs(settingsAudioDeviceStore)
-const { discardRecord, startRecord, stopRecord, onStopRecord } = useAudioRecorder(stream)
 const hearingPipeline = useHearingSpeechInputPipeline()
 const { releaseStreamingTranscriptionConsumer, transcribeForRecording, transcribeForMediaStream } = hearingPipeline
 const { supportsStreamInput } = storeToRefs(hearingPipeline)
@@ -83,6 +82,7 @@ const chatStore = useChatStore()
 
 /** Identifies this page in the shared streaming transcription session. */
 const transcriptionConsumerId = 'stage-pocket:voice-input'
+const VAD_SAMPLE_RATE = 16000
 
 const {
   init: initVAD,
@@ -92,12 +92,9 @@ const {
   inferenceError: vadError,
 } = useVAD(workletUrl, {
   threshold: ref(0.6),
-  onSpeechStart: () => handleSpeechStart(),
-  onSpeechEnd: () => handleSpeechEnd(),
-  onSpeechCancel: () => handleSpeechCancel(),
+  onSpeechReady: ({ buffer }) => void handleSpeechReady(buffer),
 })
 
-let stopOnStopRecord: (() => void) | undefined
 let currentBinding: VoiceInputBinding | undefined
 
 async function sendVoiceInputTextToChat(text: string | undefined) {
@@ -152,35 +149,27 @@ async function startAudioInteraction(binding: VoiceInputBinding) {
   if (currentBinding !== binding)
     return
   await startVAD(binding.stream)
-
-  stopOnStopRecord = onStopRecord(async (recording) => {
-    const text = await transcribeForRecording(recording)
-    if (currentBinding === binding)
-      await handleVoiceInputText(text)
-  })
 }
 
-async function handleSpeechStart() {
-  if (currentBinding?.mode === 'recording')
-    await startRecord()
-}
+/**
+ * Transcribes one speech segment from the VAD buffer.
+ * The buffer keeps the audio from before VAD confirmed speech. A recorder that starts on
+ * the speech-start event loses the first syllables.
+ */
+async function handleSpeechReady(buffer: Float32Array) {
+  const binding = currentBinding
+  if (binding?.mode !== 'recording')
+    return
 
-async function handleSpeechEnd() {
-  if (currentBinding?.mode === 'recording')
-    await stopRecord()
-}
-
-async function handleSpeechCancel() {
-  if (currentBinding?.mode === 'recording')
-    await discardRecord()
+  const recording = new Blob([toWav(buffer.slice().buffer, VAD_SAMPLE_RATE)], { type: 'audio/wav' })
+  const text = await transcribeForRecording(recording)
+  if (currentBinding === binding)
+    await handleVoiceInputText(text)
 }
 
 async function stopAudioInteraction() {
   currentBinding = undefined
-  stopOnStopRecord?.()
-  stopOnStopRecord = undefined
   disposeVAD()
-  await discardRecord()
   await releaseStreamingTranscriptionConsumer(transcriptionConsumerId)
 }
 
