@@ -82,6 +82,22 @@ async function refreshStatuses() {
 
   if (!playgroundModel.value || !statuses[playgroundModel.value]?.ready)
     playgroundModel.value = readyModels.value[0]?.id
+
+  await syncProviderStatus()
+}
+
+/**
+ * Registers the provider and refreshes its validation status after the model files change.
+ * The hearing module lists models only for providers with the configured status.
+ */
+async function syncProviderStatus() {
+  const ready = readyModels.value.length > 0
+  if (ready)
+    providerConfigStore.markProviderAdded(providerId)
+
+  await providersStore.validateProvider(providerId, { force: true })
+  if (ready)
+    await providersStore.fetchModelsForProvider(providerId)
 }
 
 async function handleDownload(modelId: string) {
@@ -90,7 +106,6 @@ async function handleDownload(modelId: string) {
   downloadPercent.value = 0
   try {
     await SherpaAsr.downloadModel({ model: modelId })
-    await providersStore.validateProviderConfig(providerId, { ...providerConfigStore.getProviderConfig(providerId) })
   }
   catch (error) {
     errorMessage.value = errorMessageFrom(error) ?? 'Download failed'
