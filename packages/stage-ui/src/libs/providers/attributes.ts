@@ -100,6 +100,7 @@ const providerAttributesById = {
   'perplexity-ai': paidCloud,
   'player2-speech': freeLocal,
   'speech-noop': false,
+  'supertonic-local': freeLocal,
   'together-ai': paidCloud,
   'voicevox': freeLocal,
   'volcengine': paidCloud,

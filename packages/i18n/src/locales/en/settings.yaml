@@ -1328,6 +1328,33 @@ pages:
       speech-noop:
         title: None
         description: No speech output.
+      supertonic-local:
+        title: Supertonic TTS (On-device)
+        description: Multilingual text-to-speech that runs on this Android device with Supertonic 3.
+        model:
+          label: Model files
+          description: The model files are about 400 MB. Download them once over Wi-Fi.
+          status:
+            ready: Downloaded
+            missing: Not downloaded
+            downloading: Downloading {percent}%
+            unavailable: This device does not support on-device Supertonic.
+          download: Download
+          cancel: Cancel
+          delete: Delete
+        fields:
+          field:
+            language:
+              label: Language
+              description: The language of the text. Auto lets the model detect it.
+            speed:
+              label: Speed
+              description: Higher values speak faster.
+            steps:
+              label: Quality steps
+              description: More steps sound cleaner but take longer.
+        playground:
+          default-text: Hello! This is a test of on-device Supertonic speech.
       comfyui:
         settings:
           title: ComfyUI (Local)
