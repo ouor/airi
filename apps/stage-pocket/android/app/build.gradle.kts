@@ -13,6 +13,7 @@ val androidxJunitVersion: String by rootProject.extra
 val androidxEspressoCoreVersion: String by rootProject.extra
 val okhttpVersion: String by rootProject.extra
 val orgJsonVersion: String by rootProject.extra
+val onnxruntimeVersion: String by rootProject.extra
 
 val androidMinSdk = minSdkVersion
 val androidCompileSdk = compileSdkVersion
@@ -78,6 +79,7 @@ dependencies {
     implementation("androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion")
     implementation("androidx.core:core-splashscreen:$coreSplashScreenVersion")
     implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:$onnxruntimeVersion")
     implementation(project(":capacitor-android"))
     testImplementation("junit:junit:$junitVersion")
     testImplementation("org.json:json:$orgJsonVersion")

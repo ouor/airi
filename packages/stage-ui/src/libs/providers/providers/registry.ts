@@ -21,6 +21,7 @@ import type {
   providerOfficialTranscription,
 } from './official'
 import type { providerSherpawTranscription } from './sherpaw'
+import type { providerSupertonicLocal } from './supertonic-local'
 
 import { orderBy } from 'es-toolkit'
 
@@ -36,6 +37,7 @@ type StageOnlyProviderId
     | typeof providerBrowserLocalAudioSpeech.id
     | typeof providerBrowserLocalAudioTranscription.id
     | typeof providerKokoroLocal.id
+    | typeof providerSupertonicLocal.id
     | typeof providerNvidia.id
     | typeof providerOfficialChat.id
     | typeof providerOfficialSpeech.id

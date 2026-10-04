@@ -618,6 +618,33 @@ pages:
       speech-noop:
         title: 없음
         description: 음성 출력이 없습니다.
+      supertonic-local:
+        title: Supertonic TTS (기기 내)
+        description: Supertonic 3으로 이 Android 기기에서 직접 실행하는 다국어 음성 합성입니다.
+        model:
+          label: 모델 파일
+          description: 모델 파일은 약 400MB입니다. Wi-Fi에서 한 번만 받으면 됩니다.
+          status:
+            ready: 다운로드 완료
+            missing: 다운로드 안 됨
+            downloading: 다운로드 중 {percent}%
+            unavailable: 이 기기에서는 Supertonic을 사용할 수 없습니다.
+          download: 다운로드
+          cancel: 취소
+          delete: 삭제
+        fields:
+          field:
+            language:
+              label: 언어
+              description: 읽을 텍스트의 언어입니다. 자동을 고르면 모델이 판단합니다.
+            speed:
+              label: 속도
+              description: 값이 클수록 빠르게 말합니다.
+            steps:
+              label: 품질 단계
+              description: 단계가 많을수록 깨끗하지만 더 오래 걸립니다.
+        playground:
+          default-text: 안녕하세요! 기기에서 직접 만든 Supertonic 음성 테스트입니다.
       elevenlabs:
         fields:
           field:
