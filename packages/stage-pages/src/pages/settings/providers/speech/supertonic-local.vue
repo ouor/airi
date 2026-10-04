@@ -61,6 +61,20 @@ async function refreshStatus() {
   status.value = await SupertonicTts.getStatus()
 }
 
+/**
+ * Registers the provider and refreshes its validation status after the model files change.
+ * The speech module lists models only for providers with the configured status.
+ */
+async function syncProviderStatus() {
+  await providersStore.initializeProvider(providerId)
+  if (status.value?.ready)
+    providerConfigStore.markProviderAdded(providerId)
+
+  await providersStore.validateProvider(providerId, { force: true })
+  if (status.value?.ready)
+    await providersStore.fetchModelsForProvider(providerId)
+}
+
 async function reloadVoices() {
   voicesLoading.value = true
   try {
@@ -77,7 +91,7 @@ async function handleDownload() {
   try {
     await SupertonicTts.downloadModels()
     await refreshStatus()
-    await providersStore.validateProviderConfig(providerId, { ...providerConfigStore.getProviderConfig(providerId) })
+    await syncProviderStatus()
     await reloadVoices()
   }
   catch (error) {
@@ -97,6 +111,7 @@ async function handleDelete() {
   errorMessage.value = ''
   await SupertonicTts.deleteModels()
   await refreshStatus()
+  await syncProviderStatus()
 }
 
 async function handleGenerateSpeech(input: string, voiceId: string, _useSSML: boolean) {
@@ -117,6 +132,7 @@ onMounted(async () => {
   if (status.value?.downloading)
     downloadPercent.value = Math.round((status.value.downloadedBytes / status.value.totalBytes) * 100)
 
+  await syncProviderStatus()
   await reloadVoices()
 })
 
