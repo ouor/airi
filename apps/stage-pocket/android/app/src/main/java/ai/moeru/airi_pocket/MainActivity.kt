@@ -30,6 +30,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(MicrophonePermissionPlugin::class.java)
         registerPlugin(WebAuthenticationPlugin::class.java)
         registerPlugin(SupertonicTtsPlugin::class.java)
+        registerPlugin(SherpaAsrPlugin::class.java)
         super.load()
 
         val bridge = bridge ?: return

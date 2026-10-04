@@ -99,6 +99,7 @@ const providerAttributesById = {
   'openrouter-audio-speech': paidCloud,
   'perplexity-ai': paidCloud,
   'player2-speech': freeLocal,
+  'sherpa-onnx-transcription': freeLocal,
   'speech-noop': false,
   'supertonic-local': freeLocal,
   'together-ai': paidCloud,

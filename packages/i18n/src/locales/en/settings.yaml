@@ -1328,6 +1328,25 @@ pages:
       speech-noop:
         title: None
         description: No speech output.
+      sherpa-onnx-transcription:
+        title: sherpa-onnx (On-device)
+        description: Offline speech recognition that runs on this Android device with sherpa-onnx.
+        model:
+          label: Models
+          description: Download a model once over Wi-Fi. Select the model to use in Hearing settings.
+          status:
+            ready: Downloaded
+            missing: Not downloaded
+            downloading: Downloading {percent}%
+            unavailable: This device does not support on-device sherpa-onnx.
+          download: Download
+          cancel: Cancel
+          delete: Delete
+        fields:
+          field:
+            language:
+              label: Language
+              description: The spoken language. Only SenseVoice uses it. Auto lets the model detect it.
       supertonic-local:
         title: Supertonic TTS (On-device)
         description: Multilingual text-to-speech that runs on this Android device with Supertonic 3.
