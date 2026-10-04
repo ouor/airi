@@ -15,7 +15,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 import ai.moeru.airi_pocket.supertonic.Languages
-import ai.moeru.airi_pocket.supertonic.SupertonicModelStore
+import ai.moeru.airi_pocket.supertonic.SupertonicAssets
 import ai.moeru.airi_pocket.supertonic.SupertonicTts
 import ai.moeru.airi_pocket.supertonic.VoiceStyle
 
@@ -27,7 +27,7 @@ import ai.moeru.airi_pocket.supertonic.VoiceStyle
  */
 @CapacitorPlugin(name = "SupertonicTts")
 class SupertonicTtsPlugin : Plugin() {
-    private val store by lazy { SupertonicModelStore(context) }
+    private val store by lazy { SupertonicAssets.createStore(context) }
 
     /** One thread keeps ONNX sessions and voice styles away from concurrent access. */
     private val synthesisExecutor: ExecutorService = Executors.newSingleThreadExecutor()
@@ -44,14 +44,14 @@ class SupertonicTtsPlugin : Plugin() {
             put("loaded", engine != null)
             put("downloading", downloading.get())
             put("downloadedBytes", store.downloadedBytes())
-            put("totalBytes", SupertonicModelStore.KNOWN_TOTAL_BYTES)
+            put("totalBytes", store.totalBytes)
         })
     }
 
     @PluginMethod
     fun listVoices(call: PluginCall) {
         call.resolve(JSObject().apply {
-            put("voices", JSArray(SupertonicModelStore.VOICE_NAMES))
+            put("voices", JSArray(SupertonicAssets.VOICE_NAMES))
             put("languages", JSArray(Languages.AVAILABLE))
         })
     }
@@ -98,7 +98,7 @@ class SupertonicTtsPlugin : Plugin() {
     @PluginMethod
     fun synthesize(call: PluginCall) {
         val text = call.getString("text")?.trim().orEmpty()
-        val voice = call.getString("voice") ?: SupertonicModelStore.VOICE_NAMES.first()
+        val voice = call.getString("voice") ?: SupertonicAssets.VOICE_NAMES.first()
         val lang = call.getString("lang") ?: "ko"
         val speed = call.getFloat("speed") ?: 1.05f
         val steps = call.getInt("steps") ?: 8
@@ -107,7 +107,7 @@ class SupertonicTtsPlugin : Plugin() {
             call.reject("Text is empty")
             return
         }
-        if (voice !in SupertonicModelStore.VOICE_NAMES) {
+        if (voice !in SupertonicAssets.VOICE_NAMES) {
             call.reject("Unknown voice: $voice")
             return
         }
@@ -123,8 +123,8 @@ class SupertonicTtsPlugin : Plugin() {
                     return@execute
                 }
 
-                val tts = engine ?: SupertonicTts.load(store.onnxDir).also { engine = it }
-                val style = styles.getOrPut(voice) { VoiceStyle.load(store.voiceStyleFile(voice)) }
+                val tts = engine ?: SupertonicTts.load(SupertonicAssets.onnxDir(store)).also { engine = it }
+                val style = styles.getOrPut(voice) { VoiceStyle.load(SupertonicAssets.voiceStyleFile(store, voice)) }
                 val result = tts.synthesize(text, lang, style, totalStep = steps, speed = speed)
 
                 call.resolve(JSObject().apply {

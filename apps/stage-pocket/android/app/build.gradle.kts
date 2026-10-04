@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+import java.net.URI
 import java.util.Properties
 
 val minSdkVersion: Int by rootProject.extra
@@ -14,6 +15,7 @@ val androidxEspressoCoreVersion: String by rootProject.extra
 val okhttpVersion: String by rootProject.extra
 val orgJsonVersion: String by rootProject.extra
 val onnxruntimeVersion: String by rootProject.extra
+val sherpaOnnxVersion: String by rootProject.extra
 
 val androidMinSdk = minSdkVersion
 val androidCompileSdk = compileSdkVersion
@@ -31,6 +33,61 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+
+// NOTICE:
+// sherpa-onnx (offline ASR) comes from its GitHub release instead of the JitPack AAR.
+// The AAR ships a shared libonnxruntime.so with versioned symbols (ONNX Runtime 1.28.2) that collides
+// with the one from onnxruntime-android (Supertonic TTS), so `libsherpa-onnx-jni.so` fails to load.
+// The `android-static-link-onnxruntime` build links ONNX Runtime inside `libsherpa-onnx-jni.so`.
+// The Kotlin API classes come from `classes.jar` in the release AAR of the same version.
+// Remove this when sherpa-onnx publishes a static-link AAR to a Maven repository.
+val sherpaOnnxDir = layout.buildDirectory.dir("sherpa-onnx/$sherpaOnnxVersion").get().asFile
+val sherpaOnnxJniLibsDir = File(sherpaOnnxDir, "jniLibs")
+val sherpaOnnxClassesJar = File(sherpaOnnxDir, "classes.jar")
+val sherpaOnnxReleaseUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaOnnxVersion"
+
+val downloadSherpaOnnx by tasks.registering {
+    description = "Downloads the sherpa-onnx static-link native libraries and Kotlin API classes."
+    outputs.dir(sherpaOnnxDir)
+    onlyIf { !sherpaOnnxClassesJar.exists() || !File(sherpaOnnxJniLibsDir, "arm64-v8a/libsherpa-onnx-jni.so").exists() }
+
+    doLast {
+        val archives = File(sherpaOnnxDir, "archives").apply { mkdirs() }
+
+        fun download(name: String): File {
+            val target = File(archives, name)
+            if (!target.exists()) {
+                logger.lifecycle("Downloading $name")
+                val part = File(archives, "$name.part")
+                URI("$sherpaOnnxReleaseUrl/$name").toURL().openStream().use { input ->
+                    part.outputStream().use { input.copyTo(it) }
+                }
+                part.renameTo(target)
+            }
+            return target
+        }
+
+        val nativeArchive = download("sherpa-onnx-v$sherpaOnnxVersion-android-static-link-onnxruntime.tar.bz2")
+        val aar = download("sherpa-onnx-$sherpaOnnxVersion.aar")
+
+        project.copy {
+            from(project.tarTree(project.resources.bzip2(nativeArchive)))
+            // The x86 build in this archive still needs a shared libonnxruntime.so.
+            include("**/arm64-v8a/*.so", "**/armeabi-v7a/*.so", "**/x86_64/*.so")
+            eachFile { relativePath = RelativePath(true, *relativePath.segments.takeLast(2).toTypedArray()) }
+            includeEmptyDirs = false
+            into(sherpaOnnxJniLibsDir)
+        }
+        project.copy {
+            from(project.zipTree(aar))
+            include("classes.jar")
+            into(sherpaOnnxDir)
+        }
+    }
+}
+
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(downloadSherpaOnnx) }
 
 android {
     namespace = "ai.moeru.airi_pocket"
@@ -52,6 +109,11 @@ android {
                 getDefaultProguardFile("proguard-android.txt"),
                 "proguard-rules.pro",
             )
+        }
+    }
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDir(sherpaOnnxJniLibsDir)
         }
     }
     androidResources {
@@ -80,6 +142,7 @@ dependencies {
     implementation("androidx.core:core-splashscreen:$coreSplashScreenVersion")
     implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
     implementation("com.microsoft.onnxruntime:onnxruntime-android:$onnxruntimeVersion")
+    implementation(files(sherpaOnnxClassesJar).builtBy(downloadSherpaOnnx))
     implementation(project(":capacitor-android"))
     testImplementation("junit:junit:$junitVersion")
     testImplementation("org.json:json:$orgJsonVersion")

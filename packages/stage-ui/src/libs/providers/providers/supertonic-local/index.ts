@@ -2,8 +2,9 @@ import { errorMessageFrom } from '@moeru/std'
 import { isStageCapacitor } from '@proj-airi/stage-shared'
 import { z } from 'zod'
 
+import { decodeBase64 } from '../native-bridge/base64'
 import { defineProvider } from '../registry'
-import { decodeBase64, isSupertonicAvailable, SupertonicTts } from './native'
+import { isSupertonicAvailable, SupertonicTts } from './native'
 
 export const SUPERTONIC_PROVIDER_ID = 'supertonic-local'
 export const SUPERTONIC_MODEL_ID = 'supertonic-3'

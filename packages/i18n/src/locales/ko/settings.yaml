@@ -618,6 +618,25 @@ pages:
       speech-noop:
         title: 없음
         description: 음성 출력이 없습니다.
+      sherpa-onnx-transcription:
+        title: sherpa-onnx (기기 내)
+        description: sherpa-onnx로 이 Android 기기에서 직접 실행하는 오프라인 음성 인식입니다.
+        model:
+          label: 모델
+          description: Wi-Fi에서 모델을 한 번 받으세요. 사용할 모델은 청각 설정에서 고릅니다.
+          status:
+            ready: 다운로드 완료
+            missing: 다운로드 안 됨
+            downloading: 다운로드 중 {percent}%
+            unavailable: 이 기기에서는 sherpa-onnx를 사용할 수 없습니다.
+          download: 다운로드
+          cancel: 취소
+          delete: 삭제
+        fields:
+          field:
+            language:
+              label: 언어
+              description: 말하는 언어입니다. SenseVoice에서만 쓰입니다. 자동을 고르면 모델이 판단합니다.
       supertonic-local:
         title: Supertonic TTS (기기 내)
         description: Supertonic 3으로 이 Android 기기에서 직접 실행하는 다국어 음성 합성입니다.

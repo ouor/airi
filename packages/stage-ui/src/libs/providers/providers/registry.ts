@@ -20,6 +20,7 @@ import type {
   providerOfficialSpeechStreaming,
   providerOfficialTranscription,
 } from './official'
+import type { providerSherpaOnnxTranscription } from './sherpa-onnx'
 import type { providerSherpawTranscription } from './sherpaw'
 import type { providerSupertonicLocal } from './supertonic-local'
 
@@ -38,6 +39,7 @@ type StageOnlyProviderId
     | typeof providerBrowserLocalAudioTranscription.id
     | typeof providerKokoroLocal.id
     | typeof providerSupertonicLocal.id
+    | typeof providerSherpaOnnxTranscription.id
     | typeof providerNvidia.id
     | typeof providerOfficialChat.id
     | typeof providerOfficialSpeech.id

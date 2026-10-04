@@ -1,6 +1,5 @@
-package ai.moeru.airi_pocket.supertonic
+package ai.moeru.airi_pocket.models
 
-import android.content.Context
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
@@ -8,16 +7,17 @@ import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Owns the Supertonic 3 model files in app-private storage.
+ * Owns a set of model files that download once into app-private storage.
  *
- * Layout mirrors the Hugging Face repo:
- *   <filesDir>/supertonic/onnx/{*.onnx, tts.json, unicode_indexer.json}
- *   <filesDir>/supertonic/voice_styles/{M1..M5,F1..F5}.json
- *
+ * Each asset downloads from `baseUrl + asset.path` to `rootDir/asset.path`.
  * Downloads resume with HTTP Range, retry per file, check sizes, and publish atomically
- * (`*.part` then rename). Ported from supertonic-android `ModelAssets` and `ModelDownloader`.
+ * (`*.part` then rename).
  */
-class SupertonicModelStore(context: Context) {
+class ModelFileStore(
+    val rootDir: File,
+    private val baseUrl: String,
+    private val assets: List<Asset>,
+) {
 
     /** A remote file. [size] is the expected byte length, or -1 when unknown (small JSON). */
     data class Asset(val path: String, val size: Long)
@@ -31,19 +31,18 @@ class SupertonicModelStore(context: Context) {
         val totalBytes: Long,
     )
 
-    private val baseDir = File(context.filesDir, "supertonic")
     private val cancelled = AtomicBoolean(false)
 
-    val onnxDir: File get() = File(baseDir, "onnx")
+    val totalBytes: Long = assets.sumOf(::knownSize)
 
-    fun voiceStyleFile(name: String): File = File(baseDir, "voice_styles/$name.json")
+    fun file(path: String): File = File(rootDir, path)
 
     /** True only when every asset exists and matches its known size. */
-    fun isReady(): Boolean = ALL.all { isComplete(it) }
+    fun isReady(): Boolean = assets.all(::isComplete)
 
     /** Bytes already on disk for known-size assets. */
-    fun downloadedBytes(): Long = ALL.sumOf { asset ->
-        val file = localFile(asset)
+    fun downloadedBytes(): Long = assets.sumOf { asset ->
+        val file = file(asset.path)
         when {
             isComplete(asset) -> knownSize(asset)
             else -> File(file.parentFile, file.name + ".part").takeIf(File::exists)?.length() ?: 0L
@@ -57,34 +56,31 @@ class SupertonicModelStore(context: Context) {
     /** Blocks the calling thread until all assets are present. Throws on failure or cancel. */
     fun download(onProgress: (Progress) -> Unit) {
         cancelled.set(false)
-        File(baseDir, "onnx").mkdirs()
-        File(baseDir, "voice_styles").mkdirs()
 
         var cumulativeBefore = 0L
-        ALL.forEachIndexed { index, asset ->
-            val finalFile = localFile(asset)
+        assets.forEachIndexed { index, asset ->
+            val finalFile = file(asset.path)
+            finalFile.parentFile?.mkdirs()
             if (isComplete(asset)) {
                 cumulativeBefore += knownSize(asset)
-                onProgress(Progress(index, ALL.size, asset.path, cumulativeBefore, KNOWN_TOTAL_BYTES))
+                onProgress(Progress(index, assets.size, asset.path, cumulativeBefore, totalBytes))
                 return@forEachIndexed
             }
 
             val base = cumulativeBefore
             downloadOne(asset, finalFile) { fileBytes ->
-                onProgress(Progress(index, ALL.size, asset.path, base + fileBytes, KNOWN_TOTAL_BYTES))
+                onProgress(Progress(index, assets.size, asset.path, base + fileBytes, totalBytes))
             }
             cumulativeBefore += knownSize(asset)
         }
     }
 
     fun deleteAll() {
-        baseDir.deleteRecursively()
+        rootDir.deleteRecursively()
     }
 
-    private fun localFile(asset: Asset): File = File(baseDir, asset.path)
-
     private fun isComplete(asset: Asset): Boolean {
-        val file = localFile(asset)
+        val file = file(asset.path)
         return file.exists() && (asset.size < 0 || file.length() == asset.size)
     }
 
@@ -120,7 +116,7 @@ class SupertonicModelStore(context: Context) {
 
     private fun transfer(asset: Asset, part: File, onBytes: (Long) -> Unit) {
         val existing = if (part.exists()) part.length() else 0L
-        val conn = (URL(HF_BASE + asset.path).openConnection() as HttpURLConnection).apply {
+        val conn = (URL(baseUrl + asset.path).openConnection() as HttpURLConnection).apply {
             connectTimeout = CONNECT_TIMEOUT_MS
             readTimeout = READ_TIMEOUT_MS
             instanceFollowRedirects = true
@@ -163,28 +159,11 @@ class SupertonicModelStore(context: Context) {
         }
     }
 
-    companion object {
-        const val HF_BASE = "https://huggingface.co/Supertone/supertonic-3/resolve/main/"
-
-        val VOICE_NAMES: List<String> = listOf("M1", "M2", "M3", "M4", "M5", "F1", "F2", "F3", "F4", "F5")
-
-        private val ONNX: List<Asset> = listOf(
-            Asset("onnx/duration_predictor.onnx", 3_700_147),
-            Asset("onnx/text_encoder.onnx", 36_416_150),
-            Asset("onnx/vector_estimator.onnx", 256_534_781),
-            Asset("onnx/vocoder.onnx", 101_424_195),
-            Asset("onnx/tts.json", 8_253),
-            Asset("onnx/unicode_indexer.json", 277_676),
-        )
-
-        private val ALL: List<Asset> = ONNX + VOICE_NAMES.map { Asset("voice_styles/$it.json", -1) }
-
-        val KNOWN_TOTAL_BYTES: Long = ALL.sumOf { if (it.size > 0) it.size else 0L }
-
-        private const val MAX_ATTEMPTS = 3
-        private const val CONNECT_TIMEOUT_MS = 30_000
-        private const val READ_TIMEOUT_MS = 60_000
-        private const val BUFFER_SIZE = 64 * 1024
-        private const val EMIT_EVERY_BYTES = 512L * 1024
+    private companion object {
+        const val MAX_ATTEMPTS = 3
+        const val CONNECT_TIMEOUT_MS = 30_000
+        const val READ_TIMEOUT_MS = 60_000
+        const val BUFFER_SIZE = 64 * 1024
+        const val EMIT_EVERY_BYTES = 512L * 1024
     }
 }
